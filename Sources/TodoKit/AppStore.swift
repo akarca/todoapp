@@ -21,6 +21,10 @@ public final class AppStore {
     public var canUndo: Bool { !undoStack.isEmpty }
 
     private func pushUndo(kind: MutationKind, targetID: UUID) {
+        if kind == .setTitle || kind == .setNotes,
+           lastUndoKind == kind, lastUndoTargetID == targetID {
+            return
+        }
         undoStack.append(lists)
         lastUndoKind = kind
         lastUndoTargetID = targetID
@@ -75,21 +79,16 @@ public final class AppStore {
     }
 
     public func toggleDone(listID: UUID, itemID: UUID) {
-        guard let listIdx = lists.firstIndex(where: { $0.id == listID }),
-              let itemIdx = lists[listIdx].items.firstIndex(where: { $0.id == itemID })
-        else { return }
-        pushUndo(kind: .toggleDone, targetID: itemID)
-        lists[listIdx].items[itemIdx].isDone.toggle()
-        persist()
+        updateItem(.toggleDone, listID, itemID) { $0.isDone.toggle() }
     }
 
     public func setNotes(listID: UUID, itemID: UUID, notes: String) {
-        updateItem(listID, itemID) { $0.notes = notes }
+        updateItem(.setNotes, listID, itemID) { $0.notes = notes }
     }
 
     public func setTitle(listID: UUID, itemID: UUID, title: String) {
         guard title.trimmingCharacters(in: .whitespacesAndNewlines) != "" else { return }
-        updateItem(listID, itemID) { $0.title = title }
+        updateItem(.setTitle, listID, itemID) { $0.title = title }
     }
 
     public func deleteItem(listID: UUID, itemID: UUID) {
@@ -99,10 +98,14 @@ public final class AppStore {
         persist()
     }
 
-    private func updateItem(_ listID: UUID, _ itemID: UUID, _ transform: (inout TodoItem) -> Void) {
+    private func updateItem(
+        _ kind: MutationKind, _ listID: UUID, _ itemID: UUID,
+        _ transform: (inout TodoItem) -> Void
+    ) {
         guard let listIdx = lists.firstIndex(where: { $0.id == listID }),
               let itemIdx = lists[listIdx].items.firstIndex(where: { $0.id == itemID })
         else { return }
+        pushUndo(kind: kind, targetID: itemID)
         transform(&lists[listIdx].items[itemIdx])
         persist()
     }

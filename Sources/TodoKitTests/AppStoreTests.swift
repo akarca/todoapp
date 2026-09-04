@@ -195,4 +195,65 @@ final class AppStoreTests: XCTestCase {
         XCTAssertTrue(store.lists.isEmpty)
         XCTAssertNil(store.selectedListID)
     }
+
+    func testRapidSetTitleCollapsesIntoSingleUndoStep() {
+        let (store, _) = makeStore()
+        store.addList(title: "A")
+        let listID = store.lists[0].id
+        store.addItem(listID: listID, title: "Original")
+        let itemID = store.lists[0].items[0].id
+
+        store.setTitle(listID: listID, itemID: itemID, title: "O")
+        store.setTitle(listID: listID, itemID: itemID, title: "Ok")
+        store.setTitle(listID: listID, itemID: itemID, title: "OK")
+        store.undo()
+        XCTAssertEqual(store.lists[0].items[0].title, "Original")
+    }
+
+    func testRapidSetNotesCollapsesIntoSingleUndoStep() {
+        let (store, _) = makeStore()
+        store.addList(title: "A")
+        let listID = store.lists[0].id
+        store.addItem(listID: listID, title: "Item")
+        let itemID = store.lists[0].items[0].id
+
+        store.setNotes(listID: listID, itemID: itemID, notes: "n")
+        store.setNotes(listID: listID, itemID: itemID, notes: "no")
+        store.setNotes(listID: listID, itemID: itemID, notes: "note")
+        store.undo()
+        XCTAssertEqual(store.lists[0].items[0].notes, "")
+    }
+
+    func testEditsOnDifferentItemsAreSeparateUndoSteps() {
+        let (store, _) = makeStore()
+        store.addList(title: "A")
+        let listID = store.lists[0].id
+        store.addItem(listID: listID, title: "One")
+        store.addItem(listID: listID, title: "Two")
+        let firstID = store.lists[0].items[0].id
+        let secondID = store.lists[0].items[1].id
+
+        store.setTitle(listID: listID, itemID: firstID, title: "Renamed one")
+        store.setTitle(listID: listID, itemID: secondID, title: "Renamed two")
+        store.undo()
+        XCTAssertEqual(store.lists[0].items[1].title, "Two")
+        store.undo()
+        XCTAssertEqual(store.lists[0].items[0].title, "One")
+    }
+
+    func testUndoBreaksCoalescingRun() {
+        let (store, _) = makeStore()
+        store.addList(title: "A")
+        let listID = store.lists[0].id
+        store.addItem(listID: listID, title: "Original")
+        let itemID = store.lists[0].items[0].id
+
+        store.setTitle(listID: listID, itemID: itemID, title: "X")
+        store.undo()
+        XCTAssertEqual(store.lists[0].items[0].title, "Original")
+
+        store.setTitle(listID: listID, itemID: itemID, title: "Y")
+        store.undo()
+        XCTAssertEqual(store.lists[0].items[0].title, "Original")
+    }
 }
