@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "JustTodo",
+    name: "Todo",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "JustTodoKit"),
-        .executableTarget(name: "JustTodoApp", dependencies: ["JustTodoKit"]),
-        .testTarget(name: "JustTodoKitTests", dependencies: ["JustTodoKit"]),
+        .target(name: "TodoKit"),
+        .executableTarget(name: "TodoApp", dependencies: ["TodoKit"]),
+        .testTarget(name: "TodoKitTests", dependencies: ["TodoKit"]),
     ]
 )

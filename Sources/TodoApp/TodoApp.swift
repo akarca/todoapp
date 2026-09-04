@@ -1,9 +1,9 @@
 import SwiftUI
 import AppKit
-import JustTodoKit
+import TodoKit
 
 @main
-struct JustTodoAppMain: App {
+struct TodoAppMain: App {
     @State private var store = AppStore()
     @State private var showSaveError = false
 
@@ -13,7 +13,7 @@ struct JustTodoAppMain: App {
     }
 
     var body: some Scene {
-        Window("Just Todo", id: "main") {
+        Window("Todo", id: "main") {
             ContentView()
                 .environment(store)
                 .frame(minWidth: 700, minHeight: 450)

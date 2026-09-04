@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import JustTodoKit
+import TodoKit
 
 struct DetailView: View {
     @Environment(AppStore.self) private var store

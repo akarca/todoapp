@@ -1,5 +1,5 @@
 import XCTest
-@testable import JustTodoKit
+@testable import TodoKit
 
 @MainActor
 final class AppStoreTests: XCTestCase {

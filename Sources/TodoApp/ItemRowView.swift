@@ -1,5 +1,5 @@
 import SwiftUI
-import JustTodoKit
+import TodoKit
 
 struct ItemRowView: View {
     let item: TodoItem

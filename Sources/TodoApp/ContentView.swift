@@ -1,5 +1,5 @@
 import SwiftUI
-import JustTodoKit
+import TodoKit
 
 struct ContentView: View {
     @State private var sidebarCollapsed = false
