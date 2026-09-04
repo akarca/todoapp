@@ -13,6 +13,12 @@ struct ListDetailView: View {
                     HStack {
                         Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(item.isDone ? .green : .secondary)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    item.isDone.toggle()
+                                }
+                            }
                         VStack(alignment: .leading) {
                             Text(item.title)
                                 .strikethrough(item.isDone)
