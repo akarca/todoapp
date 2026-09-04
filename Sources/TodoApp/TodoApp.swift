@@ -26,6 +26,14 @@ struct TodoAppMain: App {
                     if value != nil { showSaveError = true }
                 }
         }
+        .commands {
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") { store.undo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .disabled(!store.canUndo)
+            }
+        }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 900, height: 600)
     }
 }
