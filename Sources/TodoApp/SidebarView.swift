@@ -47,9 +47,16 @@ struct SidebarView: View {
 
     private func listRow(_ list: TodoList) -> some View {
         ZStack {
-            Text(list.title)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .opacity(collapsed ? 0 : 1)
+            HStack(spacing: 8) {
+                Text(list.title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if list.pendingCount > 0 {
+                    Text("\(list.pendingCount)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .opacity(collapsed ? 0 : 1)
 
             Text(String(list.title.prefix(1)).uppercased())
                 .font(.system(size: 20, weight: .semibold))
