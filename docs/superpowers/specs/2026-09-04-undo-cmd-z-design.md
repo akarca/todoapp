@@ -41,7 +41,8 @@ command pattern with per-mutation inverses (unnecessary complexity for a small
 - `pushUndo(kind:targetID:)` called after a mutation's validation guards
   succeed and *before* `lists` is modified — mutations rejected by guards
   (e.g. empty title, missing item) push no snapshot:
-  - If `lastUndoEntry == (kind, targetID)`, skip pushing (coalescing).
+  - If both `kind` and `targetID` equal `lastUndoKind`/`lastUndoTargetID` and
+    `kind` is `setTitle` or `setNotes`, skip pushing (coalescing).
   - Otherwise push a deep copy of `lists`, enforce the cap, and update
     `lastUndoKind`/`lastUndoTargetID`.
 - The shared `updateItem` helper gains a `MutationKind` parameter so each
@@ -56,10 +57,13 @@ command pattern with per-mutation inverses (unnecessary complexity for a small
 
 ### Coalescing semantics
 
-Consecutive calls of the same mutation kind targeting the same entity
-(`itemID`, or `listID` for `addList`) form one undo step; the snapshot taken is
-the state *before the first* call of the run. Any different mutation kind,
-different target, or an `undo()` breaks the run. No timers.
+Only the text-edit kinds (`setTitle`, `setNotes`) coalesce: consecutive calls
+with the same kind targeting the same `itemID` form one undo step; the
+snapshot kept is the state *before the first* call of the run. Discrete kinds
+(`addList`, `addItem`, `toggleDone`, `deleteItem`) always push a new snapshot
+— coalescing them would make e.g. check-then-uncheck produce a visible no-op
+undo. A different target, a different kind, or an `undo()` breaks the run.
+No timers.
 
 ### Menu wiring (TodoApp)
 
