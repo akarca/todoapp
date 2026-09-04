@@ -14,6 +14,7 @@ public final class AppStore {
         case addList, addItem, toggleDone, setNotes, setTitle, deleteItem
     }
 
+    private static let undoLimit = 50
     private var undoStack: [[TodoList]] = []
     @ObservationIgnored private var lastUndoKind: MutationKind?
     @ObservationIgnored private var lastUndoTargetID: UUID?
@@ -26,6 +27,9 @@ public final class AppStore {
             return
         }
         undoStack.append(lists)
+        if undoStack.count > Self.undoLimit {
+            undoStack.removeFirst(undoStack.count - Self.undoLimit)
+        }
         lastUndoKind = kind
         lastUndoTargetID = targetID
     }
@@ -92,7 +96,9 @@ public final class AppStore {
     }
 
     public func deleteItem(listID: UUID, itemID: UUID) {
-        guard let idx = lists.firstIndex(where: { $0.id == listID }) else { return }
+        guard let idx = lists.firstIndex(where: { $0.id == listID }),
+              lists[idx].items.contains(where: { $0.id == itemID })
+        else { return }
         pushUndo(kind: .deleteItem, targetID: itemID)
         lists[idx].items.removeAll { $0.id == itemID }
         persist()

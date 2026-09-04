@@ -256,4 +256,31 @@ final class AppStoreTests: XCTestCase {
         store.undo()
         XCTAssertEqual(store.lists[0].items[0].title, "Original")
     }
+
+    func testUndoStackIsCappedAt50() {
+        let (store, _) = makeStore()
+        store.addList(title: "A") // pushes snapshot 1 (empty list)
+        let listID = store.lists[0].id
+        for index in 0..<60 { store.addItem(listID: listID, title: "Item \(index)") }
+        // 61 snapshots pushed; cap keeps the newest 50 (oldest = list + 10 items).
+        var undos = 0
+        while store.canUndo { store.undo(); undos += 1 }
+        XCTAssertEqual(undos, 50)
+        XCTAssertEqual(store.lists[0].items.count, 10)
+    }
+
+    func testRejectedMutationsPushNoSnapshot() {
+        let (store, _) = makeStore()
+        store.addList(title: "A")
+        let listID = store.lists[0].id
+        store.addItem(listID: listID, title: "Item")
+        // Exactly two snapshots exist: before addList and before addItem.
+        store.setTitle(listID: listID, itemID: store.lists[0].items[0].id, title: "   ")
+        store.addItem(listID: listID, title: " ")
+        store.deleteItem(listID: listID, itemID: UUID())
+        var undos = 0
+        while store.canUndo { store.undo(); undos += 1 }
+        XCTAssertEqual(undos, 2)
+        XCTAssertTrue(store.lists.isEmpty)
+    }
 }
