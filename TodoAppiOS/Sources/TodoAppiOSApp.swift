@@ -7,7 +7,7 @@ struct TodoAppiOSApp: App {
         let schema = Schema([TodoList.self, TodoItem.self])
         let configuration = ModelConfiguration(
             schema: schema,
-            cloudKitDatabase: .private("iCloud.com.serdar.TodoApp")
+            cloudKitDatabase: .private("iCloud.org.yuix.TodoApp")
         )
         do {
             return try ModelContainer(for: schema, configurations: [configuration])

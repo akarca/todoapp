@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftData
 
 @MainActor
 @Observable
@@ -8,25 +9,52 @@ public final class AppStore {
     public var selectedListID: UUID?
     public var saveError: String?
 
-    @ObservationIgnored private let store: JSONStore
+    @ObservationIgnored private let modelContext: ModelContext
 
     private enum MutationKind {
         case addList, addItem, toggleDone, setNotes, setTitle, deleteItem
     }
 
+    private struct ItemSnapshot {
+        let id: UUID
+        let title: String
+        let isDone: Bool
+        let notes: String
+    }
+
+    private struct ListSnapshot {
+        let id: UUID
+        let title: String
+        let colorHex: String?
+        let items: [ItemSnapshot]
+    }
+
     private static let undoLimit = 50
-    private var undoStack: [[TodoList]] = []
+    private var undoStack: [[ListSnapshot]] = []
     @ObservationIgnored private var lastUndoKind: MutationKind?
     @ObservationIgnored private var lastUndoTargetID: UUID?
 
     public var canUndo: Bool { !undoStack.isEmpty }
+
+    private func snapshot() -> [ListSnapshot] {
+        lists.map { list in
+            ListSnapshot(
+                id: list.id,
+                title: list.title,
+                colorHex: list.colorHex,
+                items: list.items.map { item in
+                    ItemSnapshot(id: item.id, title: item.title, isDone: item.isDone, notes: item.notes)
+                }
+            )
+        }
+    }
 
     private func pushUndo(kind: MutationKind, targetID: UUID) {
         if kind == .setTitle || kind == .setNotes,
            lastUndoKind == kind, lastUndoTargetID == targetID {
             return
         }
-        undoStack.append(lists)
+        undoStack.append(snapshot())
         if undoStack.count > Self.undoLimit {
             undoStack.removeFirst(undoStack.count - Self.undoLimit)
         }
@@ -36,7 +64,7 @@ public final class AppStore {
 
     public func undo() {
         guard let previous = undoStack.popLast() else { return }
-        lists = previous
+        restore(previous)
         lastUndoKind = nil
         lastUndoTargetID = nil
         if let selected = selectedListID, !lists.contains(where: { $0.id == selected }) {
@@ -45,12 +73,63 @@ public final class AppStore {
         persist()
     }
 
-    public init(store: JSONStore = .defaultStore) {
-        self.store = store
-        self.lists = store.load()
+    private func restore(_ snapshot: [ListSnapshot]) {
+        var existingLists = Dictionary(uniqueKeysWithValues: lists.map { ($0.id, $0) })
+        var rebuilt: [TodoList] = []
+        for listSnap in snapshot {
+            let list: TodoList
+            if let existing = existingLists.removeValue(forKey: listSnap.id) {
+                list = existing
+                list.title = listSnap.title
+                list.colorHex = listSnap.colorHex
+            } else {
+                list = TodoList(id: listSnap.id, title: listSnap.title, colorHex: listSnap.colorHex)
+                modelContext.insert(list)
+            }
+            restoreItems(listSnap.items, into: list)
+            rebuilt.append(list)
+        }
+        for leftover in existingLists.values {
+            modelContext.delete(leftover)
+        }
+        lists = rebuilt
+    }
+
+    private func restoreItems(_ snapshot: [ItemSnapshot], into list: TodoList) {
+        var existingItems = Dictionary(uniqueKeysWithValues: list.items.map { ($0.id, $0) })
+        var rebuilt: [TodoItem] = []
+        for itemSnap in snapshot {
+            let item: TodoItem
+            if let existing = existingItems.removeValue(forKey: itemSnap.id) {
+                item = existing
+                item.title = itemSnap.title
+                item.isDone = itemSnap.isDone
+                item.notes = itemSnap.notes
+            } else {
+                item = TodoItem(id: itemSnap.id, title: itemSnap.title, isDone: itemSnap.isDone, notes: itemSnap.notes)
+                item.list = list
+                modelContext.insert(item)
+            }
+            rebuilt.append(item)
+        }
+        for leftover in existingItems.values {
+            modelContext.delete(leftover)
+        }
+        list.items = rebuilt
+    }
+
+    public init(modelContext: ModelContext, legacyImportURL: URL? = LegacyJSONImport.defaultLegacyFileURL) {
+        self.modelContext = modelContext
+        if let legacyImportURL {
+            LegacyJSONImport.importIfNeeded(from: legacyImportURL, into: modelContext)
+        }
+
+        let descriptor = FetchDescriptor<TodoList>()
+        self.lists = (try? modelContext.fetch(descriptor)) ?? []
+
         var filled = false
-        for idx in lists.indices where lists[idx].colorHex == nil {
-            lists[idx].colorHex = PastelPalette.uniqueRandomHex(excluding: Set(lists.compactMap(\.colorHex)))
+        for list in lists where list.colorHex == nil {
+            list.colorHex = PastelPalette.uniqueRandomHex(excluding: Set(lists.compactMap(\.colorHex)))
             filled = true
         }
         self.selectedListID = lists.first?.id
@@ -68,6 +147,7 @@ public final class AppStore {
             colorHex: PastelPalette.uniqueRandomHex(excluding: Set(lists.compactMap(\.colorHex)))
         )
         pushUndo(kind: .addList, targetID: list.id)
+        modelContext.insert(list)
         lists.append(list)
         selectedListID = list.id
         persist()
@@ -75,10 +155,12 @@ public final class AppStore {
 
     public func addItem(listID: UUID, title: String) {
         guard let trimmed = Self.valid(title) else { return }
-        guard let idx = lists.firstIndex(where: { $0.id == listID }) else { return }
+        guard let list = lists.first(where: { $0.id == listID }) else { return }
         let item = TodoItem(title: trimmed)
         pushUndo(kind: .addItem, targetID: item.id)
-        lists[idx].items.append(item)
+        item.list = list
+        list.items.append(item)
+        modelContext.insert(item)
         persist()
     }
 
@@ -96,23 +178,24 @@ public final class AppStore {
     }
 
     public func deleteItem(listID: UUID, itemID: UUID) {
-        guard let idx = lists.firstIndex(where: { $0.id == listID }),
-              lists[idx].items.contains(where: { $0.id == itemID })
+        guard let list = lists.first(where: { $0.id == listID }),
+              let item = list.items.first(where: { $0.id == itemID })
         else { return }
         pushUndo(kind: .deleteItem, targetID: itemID)
-        lists[idx].items.removeAll { $0.id == itemID }
+        list.items.removeAll { $0.id == itemID }
+        modelContext.delete(item)
         persist()
     }
 
     private func updateItem(
         _ kind: MutationKind, _ listID: UUID, _ itemID: UUID,
-        _ transform: (inout TodoItem) -> Void
+        _ transform: (TodoItem) -> Void
     ) {
-        guard let listIdx = lists.firstIndex(where: { $0.id == listID }),
-              let itemIdx = lists[listIdx].items.firstIndex(where: { $0.id == itemID })
+        guard let list = lists.first(where: { $0.id == listID }),
+              let item = list.items.first(where: { $0.id == itemID })
         else { return }
         pushUndo(kind: kind, targetID: itemID)
-        transform(&lists[listIdx].items[itemIdx])
+        transform(item)
         persist()
     }
 
@@ -123,7 +206,7 @@ public final class AppStore {
 
     private func persist() {
         do {
-            try store.save(lists)
+            try modelContext.save()
             saveError = nil
         } catch {
             saveError = error.localizedDescription

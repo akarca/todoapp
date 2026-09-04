@@ -11,6 +11,8 @@
 		2F86F42C43440B48A1B4A6C2 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B38807331E2414B5128F30 /* Color+Hex.swift */; };
 		3D94791349978BDD410F1710 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA0560DD280CEA4071472C7 /* ListsView.swift */; };
 		609CD36B5956EF1450937F4C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88C61B469A6700D54E70AB54 /* Models.swift */; };
+		7FC67459B6797C3F62C76718 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A4B38F318D6314C61A2CB5 /* CameraPicker.swift */; };
+		98A6441A7730305E34B1B641 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B8E7DED6ED34F45D68E53779 /* Assets.xcassets */; };
 		F40D9927C036A6C970E69C42 /* ListDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D386DFF515E46F69B8EA4 /* ListDetailView.swift */; };
 		F91872535B6F64AF463D3F6C /* TodoAppiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84674E15AAE6BE82EF77167 /* TodoAppiOSApp.swift */; };
 /* End PBXBuildFile section */
@@ -18,10 +20,12 @@
 /* Begin PBXFileReference section */
 		516DA0E76DE3C65DC886243A /* TodoAppiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TodoAppiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		57F1343EAB872E2F47E6B38B /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		69A4B38F318D6314C61A2CB5 /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		7BA0560DD280CEA4071472C7 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
 		88C61B469A6700D54E70AB54 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		8E1D386DFF515E46F69B8EA4 /* ListDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListDetailView.swift; sourceTree = "<group>"; };
 		B84674E15AAE6BE82EF77167 /* TodoAppiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoAppiOSApp.swift; sourceTree = "<group>"; };
+		B8E7DED6ED34F45D68E53779 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D7B38807331E2414B5128F30 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -29,6 +33,8 @@
 		04C26728A2A770F2EDCE3E8F /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				B8E7DED6ED34F45D68E53779 /* Assets.xcassets */,
+				69A4B38F318D6314C61A2CB5 /* CameraPicker.swift */,
 				D7B38807331E2414B5128F30 /* Color+Hex.swift */,
 				57F1343EAB872E2F47E6B38B /* ItemDetailView.swift */,
 				8E1D386DFF515E46F69B8EA4 /* ListDetailView.swift */,
@@ -63,6 +69,7 @@
 			buildConfigurationList = E9F1BB1AAB563C966922F6D4 /* Build configuration list for PBXNativeTarget "TodoAppiOS" */;
 			buildPhases = (
 				D30E3A85F038FF1021F1E039 /* Sources */,
+				F0F776E46BE9279F1DB86507 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -108,11 +115,23 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		F0F776E46BE9279F1DB86507 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98A6441A7730305E34B1B641 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		D30E3A85F038FF1021F1E039 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7FC67459B6797C3F62C76718 /* CameraPicker.swift in Sources */,
 				2F86F42C43440B48A1B4A6C2 /* Color+Hex.swift in Sources */,
 				0DB9F772366D8F458F7645B7 /* ItemDetailView.swift in Sources */,
 				F40D9927C036A6C970E69C42 /* ListDetailView.swift in Sources */,
@@ -253,13 +272,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Todo maddelerine fotoğraf eklemek için kameraya erişim gerekiyor.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.serdar.TodoApp;
+				PRODUCT_BUNDLE_IDENTIFIER = org.yuix.TodoApp.ios;
 				PRODUCT_NAME = TodoApp;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -275,13 +295,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Todo maddelerine fotoğraf eklemek için kameraya erişim gerekiyor.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.serdar.TodoApp;
+				PRODUCT_BUNDLE_IDENTIFIER = org.yuix.TodoApp.ios;
 				PRODUCT_NAME = TodoApp;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

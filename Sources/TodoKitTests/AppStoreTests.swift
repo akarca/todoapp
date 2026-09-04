@@ -1,17 +1,33 @@
 import XCTest
+import SwiftData
 @testable import TodoKit
 
 @MainActor
 final class AppStoreTests: XCTestCase {
-    private func makeStore() -> (AppStore, URL) {
-        let fileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            .appendingPathComponent("data.json")
-        return (AppStore(store: JSONStore(fileURL: fileURL)), fileURL)
+    private func makeContext(url: URL? = nil) -> ModelContext {
+        let schema = Schema([TodoList.self, TodoItem.self])
+        let configuration: ModelConfiguration
+        if let url {
+            configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        } else {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        }
+        let container = try! ModelContainer(for: schema, configurations: [configuration])
+        return ModelContext(container)
+    }
+
+    private func makeStore(url: URL? = nil) -> AppStore {
+        AppStore(modelContext: makeContext(url: url), legacyImportURL: nil)
+    }
+
+    private func tempStoreURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("store")
     }
 
     func testAddListTrimsTitleAndSelectsIt() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "  Work  ")
         XCTAssertEqual(store.lists.count, 1)
         XCTAssertEqual(store.lists[0].title, "Work")
@@ -19,7 +35,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testBlankTitlesRejected() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "   ")
         XCTAssertTrue(store.lists.isEmpty)
 
@@ -30,7 +46,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testToggleDoneThenUntoggleKeepsStoredPosition() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "One")
@@ -46,7 +62,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testToggleAndDelete() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "X")
@@ -60,16 +76,19 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testMutationsArePersistedAndReopenable() {
-        let (store, fileURL) = makeStore()
+        let url = tempStoreURL()
+        let store = makeStore(url: url)
         store.addList(title: "Work")
         store.addItem(listID: store.lists[0].id, title: "Buy milk")
 
-        let reopened = AppStore(store: JSONStore(fileURL: fileURL))
-        XCTAssertEqual(reopened.lists, store.lists)
+        let reopened = makeStore(url: url)
+        XCTAssertEqual(reopened.lists.count, 1)
+        XCTAssertEqual(reopened.lists[0].title, "Work")
+        XCTAssertEqual(reopened.lists[0].items.map(\.title), ["Buy milk"])
     }
 
     func testListColorsUniqueForFirst30AndFromPalette() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         for index in 0..<30 {
             store.addList(title: "List \(index)")
         }
@@ -82,7 +101,8 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testSetNotesPersists() {
-        let (store, fileURL) = makeStore()
+        let url = tempStoreURL()
+        let store = makeStore(url: url)
         store.addList(title: "A")
         store.addItem(listID: store.lists[0].id, title: "Item")
         let listID = store.lists[0].id
@@ -91,12 +111,12 @@ final class AppStoreTests: XCTestCase {
         store.setNotes(listID: listID, itemID: itemID, notes: "long note")
         XCTAssertEqual(store.lists[0].items[0].notes, "long note")
 
-        let reopened = AppStore(store: JSONStore(fileURL: fileURL))
+        let reopened = makeStore(url: url)
         XCTAssertEqual(reopened.lists[0].items[0].notes, "long note")
     }
 
     func testSetTitleUpdatesAndRejectsBlank() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         store.addItem(listID: store.lists[0].id, title: "Item")
         let listID = store.lists[0].id
@@ -109,33 +129,24 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(store.lists[0].items[0].title, "Renamed")
     }
 
-    func testItemsWithoutNotesDecodeWithEmptyNotes() throws {
-        let json = """
-        [{"id":"\(UUID().uuidString)","title":"Old","items":[{"id":"\(UUID().uuidString)","title":"Legacy","isDone":false}],"colorHex":null}]
-        """
-        let lists = try JSONDecoder().decode([TodoList].self, from: Data(json.utf8))
-        XCTAssertEqual(lists.count, 1)
-        XCTAssertEqual(lists[0].items[0].notes, "")
-    }
-
     // MARK: - Undo
 
     func testCanUndoFalseInitiallyAndTrueAfterMutation() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         XCTAssertFalse(store.canUndo)
         store.addList(title: "A")
         XCTAssertTrue(store.canUndo)
     }
 
     func testUndoOnEmptyStackIsNoOp() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.undo()
         XCTAssertTrue(store.lists.isEmpty)
         XCTAssertFalse(store.canUndo)
     }
 
     func testUndoRestoresStateBeforeAddItem() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Buy milk")
@@ -144,7 +155,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUndoRestoresStateBeforeAddList() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         store.addList(title: "B")
         store.undo()
@@ -153,7 +164,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUndoRestoresToggleDoneState() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Task")
@@ -164,7 +175,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUndoRestoresDeletedItem() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Task")
@@ -176,16 +187,18 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUndoIsPersisted() {
-        let (store, fileURL) = makeStore()
+        let url = tempStoreURL()
+        let store = makeStore(url: url)
         store.addList(title: "Work")
         store.addItem(listID: store.lists[0].id, title: "Buy milk")
         store.undo()
-        let reopened = AppStore(store: JSONStore(fileURL: fileURL))
+
+        let reopened = makeStore(url: url)
         XCTAssertEqual(reopened.lists[0].items.count, 0)
     }
 
     func testUndoAddListResetsSelectionToFirstRemaining() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         store.addList(title: "B")
         XCTAssertEqual(store.selectedListID, store.lists[1].id)
@@ -197,7 +210,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testRapidSetTitleCollapsesIntoSingleUndoStep() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Original")
@@ -211,7 +224,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testRapidSetNotesCollapsesIntoSingleUndoStep() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Item")
@@ -225,7 +238,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testEditsOnDifferentItemsAreSeparateUndoSteps() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "One")
@@ -242,7 +255,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUndoBreaksCoalescingRun() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Original")
@@ -258,7 +271,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUndoStackIsCappedAt50() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A") // pushes snapshot 1 (empty list)
         let listID = store.lists[0].id
         for index in 0..<60 { store.addItem(listID: listID, title: "Item \(index)") }
@@ -270,7 +283,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testRejectedMutationsPushNoSnapshot() {
-        let (store, _) = makeStore()
+        let store = makeStore()
         store.addList(title: "A")
         let listID = store.lists[0].id
         store.addItem(listID: listID, title: "Item")

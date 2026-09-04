@@ -1,10 +1,17 @@
 import Foundation
+import SwiftData
 
-public struct TodoItem: Identifiable, Codable, Equatable {
-    public var id: UUID
-    public var title: String
-    public var isDone: Bool
-    public var notes: String
+@Model
+public final class TodoItem {
+    public var id: UUID = UUID()
+    public var title: String = ""
+    public var isDone: Bool = false
+    public var notes: String = ""
+    public var list: TodoList?
+
+    // SwiftData/CloudKit to-many relationships don't preserve assignment order,
+    // so `TodoList.items` stamps this on every write and sorts by it on every read.
+    var order: Int = 0
 
     public init(id: UUID = UUID(), title: String, isDone: Bool = false, notes: String = "") {
         self.id = id
@@ -12,31 +19,33 @@ public struct TodoItem: Identifiable, Codable, Equatable {
         self.isDone = isDone
         self.notes = notes
     }
-
-    private enum CodingKeys: String, CodingKey {
-        case id, title, isDone, notes
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        title = try container.decode(String.self, forKey: .title)
-        isDone = try container.decodeIfPresent(Bool.self, forKey: .isDone) ?? false
-        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
-    }
 }
 
-public struct TodoList: Identifiable, Codable, Equatable {
-    public var id: UUID
-    public var title: String
-    public var items: [TodoItem]
+@Model
+public final class TodoList {
+    public var id: UUID = UUID()
+    public var title: String = ""
     public var colorHex: String?
+
+    // CloudKit requires to-many relationships to be optional; `items` below hides
+    // that behind the non-optional, order-preserving array API the rest of the app expects.
+    @Relationship(deleteRule: .cascade, inverse: \TodoItem.list)
+    private var itemsStorage: [TodoItem]? = []
+
+    public var items: [TodoItem] {
+        get { (itemsStorage ?? []).sorted { $0.order < $1.order } }
+        set {
+            for (index, item) in newValue.enumerated() { item.order = index }
+            itemsStorage = newValue
+        }
+    }
 
     public init(id: UUID = UUID(), title: String, items: [TodoItem] = [], colorHex: String? = nil) {
         self.id = id
         self.title = title
-        self.items = items
         self.colorHex = colorHex
+        for item in items { item.list = self }
+        self.items = items
     }
 
     /// Undone items first (insertion order), done items last (stable).
