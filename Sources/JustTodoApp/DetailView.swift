@@ -1,24 +1,33 @@
+import AppKit
 import SwiftUI
-import TodoKit
+import JustTodoKit
 
 struct DetailView: View {
     @Environment(AppStore.self) private var store
     @State private var selectedItemIDs: [UUID: UUID] = [:]
     @State private var newItemTitle = ""
-    @State private var newItemVisible = false
     @FocusState private var newItemFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let list = store.selectedList {
-                Text(list.title)
-                    .font(.title2.bold())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                Divider()
-                if newItemVisible {
-                    newItemField
+                HStack(spacing: 0) {
+                    Text(list.title)
+                        .font(.title2.bold())
+                        .foregroundStyle(Color(red: 0x00 / 255, green: 0x62 / 255, blue: 0xC1 / 255))
+                    Spacer(minLength: 0)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                    if let listID = store.selectedListID {
+                        selectedItemIDs[listID] = nil
+                    }
+                }
+                Divider()
                 itemRows(list)
             } else {
                 Spacer()
@@ -35,7 +44,6 @@ struct DetailView: View {
     private var newItemShortcut: some View {
         Button("New Item") {
             newItemTitle = ""
-            newItemVisible = true
             DispatchQueue.main.async { newItemFocused = true }
         }
         .keyboardShortcut("n", modifiers: .command)
@@ -45,7 +53,7 @@ struct DetailView: View {
     }
 
     private var newItemField: some View {
-        TextField("New item — Enter to add, Esc to dismiss", text: $newItemTitle)
+        TextField("New item — Enter to add", text: $newItemTitle)
             .textFieldStyle(.roundedBorder)
             .focused($newItemFocused)
             .padding(.horizontal, 16)
@@ -57,7 +65,6 @@ struct DetailView: View {
                 newItemTitle = ""
             }
             .onExitCommand {
-                newItemVisible = false
                 newItemTitle = ""
             }
     }
@@ -76,20 +83,35 @@ struct DetailView: View {
     private func itemRows(_ list: TodoList) -> some View {
         List(selection: itemSelection) {
             ForEach(list.displayedItems) { item in
+                let isSelected = selectedItemIDs[list.id] == item.id
                 ItemRowView(
                     item: item,
-                    isSelected: selectedItemIDs[list.id] == item.id,
+                    isSelected: isSelected,
                     onToggle: { store.toggleDone(listID: list.id, itemID: item.id) },
-                    onMarkDone: { store.markDone(listID: list.id, itemID: item.id) },
                     onDelete: {
                         store.deleteItem(listID: list.id, itemID: item.id)
+                        if selectedItemIDs[list.id] == item.id {
+                            selectedItemIDs[list.id] = nil
+                        }
+                    },
+                    onNotesChange: { notes in
+                        store.setNotes(listID: list.id, itemID: item.id, notes: notes)
+                    },
+                    onTitleChange: { title in
+                        store.setTitle(listID: list.id, itemID: item.id, title: title)
+                    },
+                    onDeselect: {
                         if selectedItemIDs[list.id] == item.id {
                             selectedItemIDs[list.id] = nil
                         }
                     }
                 )
                 .tag(Optional(item.id))
+                .listRowSeparator(.hidden)
+                .background(SelectionHighlightTuner(isEnabled: false))
             }
+            newItemField
+                .listRowSeparator(.hidden)
         }
         .listStyle(.inset)
     }

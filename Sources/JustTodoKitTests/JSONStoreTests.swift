@@ -1,5 +1,5 @@
 import XCTest
-@testable import TodoKit
+@testable import JustTodoKit
 
 final class JSONStoreTests: XCTestCase {
     private func tempFileURL() -> URL {
