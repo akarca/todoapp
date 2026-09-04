@@ -73,6 +73,18 @@ struct SidebarView: View {
                             .stroke(Color(red: 0x00 / 255, green: 0x62 / 255, blue: 0xC1 / 255), lineWidth: 2)
                     }
                 }
+                .overlay(alignment: .bottomTrailing) {
+                    if list.pendingCount > 0 {
+                        Text("\(list.pendingCount)")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .monospacedDigit()
+                            .frame(minWidth: 20, minHeight: 20)
+                            .padding(.horizontal, list.pendingCount > 9 ? 5 : 0)
+                            .background(Color.black, in: Capsule())
+                            .offset(x: 6, y: 6)
+                    }
+                }
                 .opacity(collapsed ? 1 : 0)
         }
         .frame(maxWidth: .infinity)
