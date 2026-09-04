@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct ListDetailView: View {
     @Bindable var list: TodoList
@@ -13,6 +14,12 @@ struct ListDetailView: View {
                     HStack {
                         Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(item.isDone ? .green : .secondary)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    item.isDone.toggle()
+                                }
+                            }
                         VStack(alignment: .leading) {
                             Text(item.title)
                                 .strikethrough(item.isDone)
@@ -23,6 +30,14 @@ struct ListDetailView: View {
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
+                        }
+                        if let photoData = item.photoData, let uiImage = UIImage(data: photoData) {
+                            Spacer()
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 36, height: 36)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
                     }
                 }
