@@ -31,6 +31,7 @@ struct ListDetailView: View {
                             }
                         }
                     }
+                    .animation(.easeOut(duration: 0.25), value: item.isDone)
                 }
             }
             .onDelete(perform: deleteItems)
