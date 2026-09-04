@@ -43,6 +43,11 @@ public struct TodoList: Identifiable, Codable, Equatable {
     public var displayedItems: [TodoItem] {
         items.filter { !$0.isDone } + items.filter { $0.isDone }
     }
+
+    /// Number of items not yet done.
+    public var pendingCount: Int {
+        items.filter { !$0.isDone }.count
+    }
 }
 
 public enum PastelPalette {
